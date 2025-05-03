@@ -195,6 +195,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['pdfFile'])) {
             display: none;
         }
 
+        .result-container h4 {
+            font-size: 1.3rem;
+            color: #333;
+            margin-bottom: 15px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .result-actions {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .result-actions button {
+            background: #00aaff;
+            color: white;
+            padding: 8px 20px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .result-actions button:hover {
+            background: #0099e6;
+            transform: translateY(-2px);
+        }
+
         #viewer {
             width: 100%;
             height: 500px;
@@ -215,12 +251,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['pdfFile'])) {
             cursor: pointer;
             padding: 12px;
             border-radius: 50%;
-            font-size: 18px;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
             transition: all 0.3s;
         }
 
         #scrollBtn:hover {
             background-color: #0099e6;
+            transform: translateY(-3px);
         }
 
         /* Responsive adjustments */
@@ -246,6 +288,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['pdfFile'])) {
             .remove-section {
                 width: 100%;
             }
+
+            .result-actions {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .result-actions button {
+                width: 100%;
+                justify-content: center;
+            }
+
+            #viewer {
+                height: 400px;
+            }
         }
 
         @media (max-width: 480px) {
@@ -260,6 +316,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['pdfFile'])) {
 
             .thumbnail label {
                 font-size: 0.7rem;
+            }
+
+            #viewer {
+                height: 300px;
+            }
+
+            .result-container h4 {
+                font-size: 1.1rem;
+            }
+
+            .result-actions button {
+                padding: 10px 15px;
+                font-size: 0.8rem;
             }
         }
     </style>
@@ -287,6 +356,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['pdfFile'])) {
         </div>
 
         <div class="result-container">
+            <h4>Result PDF</h4>
+            <div class="result-actions">
+                <button id="btnDownload"><i class="fas fa-download"></i> Download PDF</button>
+                <button id="btnPrint"><i class="fas fa-print"></i> Print PDF</button>
+            </div>
             <iframe id="viewer"></iframe>
         </div>
     </div>
@@ -336,14 +410,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['pdfFile'])) {
             window.onscroll = function() {
                 const scrollBtn = document.getElementById("scrollBtn");
                 if (scrollBtn) {
-                    scrollBtn.style.display = (document.body.scrollTop > 20 || document.documentElement.scrollTop > 20) ?
-                        "block" : "none";
+                    if (window.pageYOffset > 300) {
+                        scrollBtn.style.display = "flex";
+                    } else {
+                        scrollBtn.style.display = "none";
+                    }
                 }
             };
 
             function scrollToTop() {
-                document.body.scrollTop = 0;
-                document.documentElement.scrollTop = 0;
+                window.scrollTo({
+                    top: 0,
+                    behavior: 'smooth'
+                });
             }
 
             document.getElementById('scrollBtn')?.addEventListener('click', scrollToTop);
@@ -482,14 +561,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['pdfFile'])) {
                     })
                     .then(blob => {
                         if (blobURL) URL.revokeObjectURL(blobURL);
+
+                        currentBlob = blob;
                         blobURL = URL.createObjectURL(blob);
                         viewer.src = blobURL;
                         resultContainer.style.display = 'block';
 
+                        // Enable download button
+                        btnDownload.disabled = false;
+                        btnPrint.disabled = false;
+
                         // Scroll to result
-                        resultContainer.scrollIntoView({
-                            behavior: 'smooth'
-                        });
+                        setTimeout(() => {
+                            resultContainer.scrollIntoView({
+                                behavior: 'smooth'
+                            });
+                        }, 100);
                     })
                     .catch(error => {
                         console.error('Error:', error);
@@ -499,6 +586,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['pdfFile'])) {
                         btnRemove.disabled = false;
                         btnRemove.textContent = 'Remove Pages';
                     });
+            });
+
+            // Download PDF functionality
+            btnDownload.addEventListener('click', function() {
+                if (!currentBlob) return;
+
+                const a = document.createElement('a');
+                a.href = blobURL;
+                a.download = 'modified_document.pdf';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            });
+
+            // Print PDF functionality
+            btnPrint.addEventListener('click', function() {
+                if (!blobURL) return;
+
+                const printWindow = window.open(blobURL);
+                printWindow.onload = function() {
+                    printWindow.print();
+                };
             });
         });
     </script>
